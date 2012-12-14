@@ -100,31 +100,6 @@ class RsServoManager(OpenRTM_aist.DataFlowComponentBase):
 		# Set CORBA Service Ports
 		
 		print('State:OnInitialize')
-		
-		# Read ini file
-		self.conf = Conf.SafeConfigParser()
-                self.conf.read('ini/rsservomanager.ini')
-		
-                self.port = self.conf.get('PORT', 'port')
-                self.baudrate = int(self.conf.get('PORT', 'baudrate'))
-                
-		self.write_sens = self.conf.get('SERVO', 'write_sens') 
-		self.servo_num = int(self.conf.get('SERVO', 'servo_num'))
-                self.id = []
-		for i in range(self.servo_num):
-                        self.id.append(int(self.conf.get('SERVO', 'id_' + str(i + 1))))
-                        
-		self.pos_min = int(self.conf.get('POSITION', 'min'))
-		self.pos_max = int(self.conf.get('POSITION', 'max'))
-		self.offset = int(self.conf.get('POSITION', 'offset'))
-
-		# Open serial port
-                self.rs = pyrs.Rs()
-		self.rs.open_port(self.port, self.baudrate)
-
-		# Set multi servo value
-		self.servo_on = []
-		self.servo_pos = []
 			
 		return RTC.RTC_OK
 	
@@ -137,7 +112,39 @@ class RsServoManager(OpenRTM_aist.DataFlowComponentBase):
 		return RTC.RTC_OK
 	
 	def onActivated(self, ec_id):
+		# Read ini file
+		self.conf = Conf.SafeConfigParser()
+                self.conf.read('ini/rsservomanager.ini')
 		
+                self.port = self.conf.get('PORT', 'port')
+                self.baudrate = int(self.conf.get('PORT', 'baudrate'))
+                self.mode = self.conf.get('PORT', 'mode')
+                
+		self.write_sens = self.conf.get('SERVO', 'write_sens') 
+		self.servo_num = int(self.conf.get('SERVO', 'servo_num'))
+                self.id = []
+		for i in range(self.servo_num):
+                        self.id.append(int(self.conf.get('SERVO', 'id_' + str(i + 1))))
+                        
+		self.pos_min = int(self.conf.get('POSITION', 'min'))
+		self.pos_max = int(self.conf.get('POSITION', 'max'))
+		self.offset = int(self.conf.get('POSITION', 'offset'))
+
+		self.rs = pyrs.Rs()
+
+		if self.mode == 'RPU':
+                        self.rs.set_rpu()
+                elif self.mode == 'NORMAL':
+                        self.set_normal()
+
+		# Set multi servo value
+		self.servo_on = []
+		self.servo_pos = []
+		
+		#Open port
+		self.rs.open_port(self.port, self.baudrate)
+		
+		print('Open Port %s' %self.port)
 		print('State:OnActivated')
 		
 		return RTC.RTC_OK
@@ -148,6 +155,7 @@ class RsServoManager(OpenRTM_aist.DataFlowComponentBase):
 		
 		#Close port
 		self.rs.close_port()
+		
 		print('Close Port %s' %self.port)
 	
 		return RTC.RTC_OK
@@ -203,7 +211,7 @@ class RsServoManager(OpenRTM_aist.DataFlowComponentBase):
 		# Write Sensor Value
 		if self.write_sens == 'ON':
 			for id in self.id:
-				data = []
+				data = [id]
 				data_temp = self.rs.get_data(id)
 				for temp in data_temp:
 					data.append(temp)
